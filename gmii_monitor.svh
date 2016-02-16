@@ -26,16 +26,18 @@ class gmii_monitor extends uvm_monitor;
       if(gmii_vif.valid) begin
 	`uvm_info(this.get_name(),"SOP",UVM_HIGH)
 	txn=ethernet_transaction::type_id::create("txn");
-	pkt.bytestream.push_back(intf.data);
+	pkt.bytestream.push_back(gmii_vif.data);
 	count++;
-	while(gmii_vif.valid) begin
 	@(gmii_vif.clk);
-	    `uvm_info(get_name(),"******EOP*****",UVM_HIGH)
-	    txn.unpack();
-	    aport.write(txn);
-	    count=0;
-	    pkt_count++;
-	  end
+	while(gmii_vif.valid) begin
+	  pkt.bytestream.push_back(gmii_vif.data);
+	  @(gmii_vif.clk);
 	end
-	
-	
+	`uvm_info(get_name(),"******EOP*****",UVM_HIGH)
+	txn.unpack();
+	pkt_count++;
+	aport.write(txn);
+      end // if (gmii_vif.valid)
+    end // forever begin
+  endtask // run_phase
+endclass // gmii_monitor
