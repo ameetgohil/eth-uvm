@@ -1,9 +1,10 @@
 class ethernet_transaction extends uvm_sequence_item;
-  `uvm_object_utils(ethernet_transaction)
+//  `uvm_object_utils(ethernet_transaction)
 
 
   static int pkt_count=0;
-
+  byte 	     bytestream[$];
+  
   rand bit [55:0] preamble;
   rand byte sfd;
   rand bit [47:0] da;
@@ -20,7 +21,19 @@ class ethernet_transaction extends uvm_sequence_item;
   constraint payload_length_c { 
     payload _legnth inside {[46:1500]};
     data.size() == payload_length;};
-
+  
+/* -----\/----- EXCLUDED -----\/-----
+  `uvm_object_utils_begin(ethernet_pkt)
+    `uvm_field_int(preamble, UVM_ALL_ON | UVM_NOPACK);
+    `uvm_field_int(sfd, UVM_ALL_ON | UVM_NOPACK);
+    `uvm_field_int(da, UVM_ALL_ON | UVM_NOPACK);
+    `uvm_field_int(length, UVM_ALL_ON | UVM_NOPACK |UVM_DEC);
+    `uvm_field_queueint(data, UVM_ALL_ON | UVM_NOPACK);
+    `uvm_field_int(fcs, UVM_ALL_ON | UVM_NOPACK | UVM_NOCOMARE);
+    `uvm_field_int(payload_length, UVM_ALL_ON | UVM_NOPACK | UVM_DEC | UVM_ABSTRACT | UVM_NOCOMARE);
+  `uvm_object_utils_end
+ -----/\----- EXCLUDED -----/\----- */
+  
   function new(string name="");
     super.new(name);
   endfunction // new
@@ -36,8 +49,8 @@ length:0x%h\n
 data-size:0x%h\n
 fcs:0x%h\n
 calc_fcs:0x%h\n
-payload_length:0x%h
-",preamble,
+payload_length:0x%h",
+	     preamble,
 	     sfd,
 	     da,
 	     sa,
@@ -90,9 +103,24 @@ payload_length:0x%h
     do_calc_fcs();
   endtask // unpack
 
+
+  virtual function void do_copy(uvm_object rhs);
+    ethernet_transaction RHS;
+    
+    if(!$cast(RHS,rhs)) `uvm_fatal(get_name(),"ILLEGAL do_copy() cast")
+    else begin
+      super.do_copy(rhs);
+      da=RHS.da;
+      sa=RHS.sa;
+      length=RHS.length;
+      while(rhs.data.size()>0)
+	data.push_back(rhs.data.pop_front());
+    end
+  endfunction // do_copy
+  
   virtual  function bit do_compare(uvm_object rhs, uvm_comparer comparer);
     ethernet_transaction RHS;
-    if(!$cast(RHS,rhs)) return 0;
+    if(!$cast(RHS,rhs)) `uvm_fatal(get_name(),"ILLEGAL do_compare() cast")
     else return (super.do_compare(rhs,comparer) &&
 		 (this.da==RHS.da) &&
 		 (this.sa==RHS.sa) &&
@@ -110,7 +138,13 @@ payload_length:0x%h
       if(this.data[i]!=data[i])
 	return 0;
   endfunction // compare_data
-  
+
+  virtual function void do_print(uvm_printer printer);
+      if (printer.knobs.sprint==0)
+        $display(convert2string());
+      else
+        printer.m_string = convert2string();
+   endfunction
 
   virtual  function void add_to_wave(int transaction_viewing_stream_h);
     if(transaction_view_h==0)
