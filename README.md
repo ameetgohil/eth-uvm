@@ -1,2 +1,2 @@
 # eth-uvm
-UVM agent for ehternet
+UVM agent for ethernet
